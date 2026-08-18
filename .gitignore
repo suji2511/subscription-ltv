@@ -18,6 +18,10 @@ __pycache__/
 .ipynb_checkpoints/
 .ruff_cache/
 
+# Agent instruction files: kept locally, not published.
+CLAUDE.md
+AGENTS.md
+
 # OS / editor
 .DS_Store
 .Rhistory
