@@ -379,4 +379,4 @@ python -m src.backtest.evaluate          # backtest
 
 Python 3.11 · DuckDB · polars · lifelines · pytest · ruff
 
-**48 tests.** Three consecutive rebuilds verified byte-identical.
+**57 tests.** Three consecutive rebuilds verified byte-identical.
