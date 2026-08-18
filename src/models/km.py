@@ -207,14 +207,24 @@ def incident_only_check(df: pd.DataFrame) -> None:
             rows[str(level)] = describe(kmf, len(part), int(part["event"].sum()))
     print(pd.DataFrame(rows).T.to_string())
 
-    crossed_full, detail_full = crossing(
-        fit(pair[pair["plan_type"] == "01_<=7d"], "a"),
-        fit(pair[pair["plan_type"] == "02_8-31d"], "b"),
-    )
-    crossed_inc, detail_inc = crossing(
-        fit(incident[incident["plan_type"] == "01_<=7d"], "a"),
-        fit(incident[incident["plan_type"] == "02_8-31d"], "b"),
-    )
+    # Both strata must be estimable for a crossing to be defined. On a dataset
+    # where one of them is absent or too thin -- which is normal for a subset,
+    # a synthetic fixture, or a single-product catalogue -- the honest answer
+    # is "not applicable", not a crash.
+    fits = {
+        key: (fit(frame[frame["plan_type"] == "01_<=7d"], "a"),
+              fit(frame[frame["plan_type"] == "02_8-31d"], "b"))
+        for key, frame in [("full", pair), ("incident", incident)]
+    }
+    if any(a is None or b is None for a, b in fits.values()):
+        print(
+            "\n  Crossing check skipped: both <=7d and 8-31d need at least"
+            f" {MIN_EVENTS_PER_CELL} events\n  in the full and incident subsets."
+        )
+        return
+
+    crossed_full, detail_full = crossing(*fits["full"])
+    crossed_inc, detail_inc = crossing(*fits["incident"])
     print(f"\n  all subjects  (<=7d - 8-31d): {detail_full}")
     print(f"    crossing: {crossed_full}")
     print(f"  incident only (<=7d - 8-31d): {detail_inc}")
@@ -299,7 +309,7 @@ def via3_sensitivity(df: pd.DataFrame) -> None:
     )
 
 
-def main() -> None:
+def main() -> KaplanMeierFitter:
     con = duckdb.connect(str(MARTS_DB), read_only=True)
     df = load_spells(con)
     both = load_with_excluded(con)
@@ -322,6 +332,7 @@ def main() -> None:
     incident_only_check(df)
     exclusion_bracket(df, both)
     via3_sensitivity(df)
+    return pooled
 
 
 if __name__ == "__main__":

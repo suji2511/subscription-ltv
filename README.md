@@ -341,9 +341,32 @@ see because those subjects are absent from both forecast and realised.
 
 ## Reproducing
 
+A fresh clone gets from two CSVs to full results with one command.
+
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-# place transactions.csv and members_v3.csv in data/raw/
+
+# Place transactions.csv and members_v3.csv in data/raw/. Both come from the
+# ORIGINAL KKBox competition files, not churn_comp_refresh.7z -- see the audit
+# section above for why that distinction decides the project.
+#   https://www.kaggle.com/c/kkbox-churn-prediction-challenge/data
+
+python run_all.py
+```
+
+`run_all.py` checks the raw data is present, then runs ingestion → marts →
+Kaplan-Meier → LTV → backtest in order, stopping at the first stage that
+errors rather than continuing on a half-built intermediate. It finishes by
+re-deriving three headline figures from this run — total subjects, pooled
+median survival, and the primary backtest MAE — and comparing them against
+what is published above, so the README cannot quietly drift from the code.
+
+**About 1 minute 45 seconds on the full 21.5M-row dataset** (measured:
+ingestion 25s, marts 50s, Kaplan-Meier 4s, LTV 14s, backtest 8s).
+
+Individual stages, if you want to run one in isolation:
+
+```bash
 python notebooks/step1_audit.py          # the audit that justified the dataset
 python -m src.ingest.stage               # raw -> staged (DuckDB)
 python -m src.cohorts.spells             # staged -> marts (spell table)

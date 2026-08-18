@@ -265,21 +265,24 @@ def report(cells: pd.DataFrame, overall: dict, horizon: int, tag: str) -> None:
         )
 
 
-def main() -> None:
+def main() -> dict:
     con = duckdb.connect(str(MARTS_DB), read_only=True)
     df = load(con)
     con.close()
     print(f"Loaded {len(df):,} subjects; fit window ends {FIT_WINDOW_END}")
     print(f"Censored fit view: {len(censor_at_fit_window(df, FIT_WINDOW_END)):,} subjects")
 
+    results = {}
     for horizon, tag in [(MIN_FOLLOWUP_DAYS, "PRIMARY"), (SECONDARY_FOLLOWUP_DAYS, "SECONDARY")]:
         cells, overall = run_horizon(df, horizon)
+        results[horizon] = overall
         report(cells, overall, horizon, tag)
         print(f"\n  worst 5 cells by |error| ({horizon}d):")
         worst = cells.nlargest(5, "abs_error")[
             ["cohort", "plan_type", "n", "truncated_share", "forecast_S", "realised_S", "error_S"]
         ]
         print(worst.to_string(index=False))
+    return results
 
 
 if __name__ == "__main__":
